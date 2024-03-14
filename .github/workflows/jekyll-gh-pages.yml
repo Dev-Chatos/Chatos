@@ -1,0 +1,55 @@
+name: Deploy Jekyll with Weavy API Integration
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+
+jobs:
+  setup_weavy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install curl
+        run: sudo apt-get install curl -y
+      - name: Update Weavy User
+        run: |
+          curl -X PUT https://7be8ca1322004475b09696cff1b92fec.weavy.io/api/users/demouser \
+          -H "Authorization: Bearer wys_RdBziszMNdxkAQvoRbuODE2T9H116c2zAGsq" \
+          -H "Content-Type: application/json" \
+          -d "{ \"name\": \"Demo User\" }"
+      - name: Generate Weavy Token
+        run: |
+          curl -X POST https://7be8ca1322004475b09696cff1b92fec.weavy.io/api/users/demouser/tokens \
+          -H "Authorization: Bearer wys_RdBziszMNdxkAQvoRbuODE2T9H116c2zAGsq" \
+          -H "Content-Type: application/json" \
+          -d "{ \"expires_in\": 3456000 }"
+
+  build_and_deploy:
+    runs-on: ubuntu-latest
+    needs: setup_weavy
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+      - name: Build with Jekyll
+        uses: actions/jekyll-build-pages@v1
+        with:
+          source: ./
+          destination: ./_site
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build_and_deploy
+    steps:
+      - name: Deploy to GitHub Pages
+        uses: actions/deploy-pages@v4
